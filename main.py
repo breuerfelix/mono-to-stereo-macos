@@ -1,27 +1,37 @@
 import sounddevice as sd
 import numpy as np
 
-# Set your input and output device indices (use sd.query_devices() to find them)
-INPUT_DEVICE_INDEX = 1  # Replace with your input device index
-OUTPUT_DEVICE_INDEX = 3  # Replace with your output device index
 INPUT_CHANNEL = 0        # Channel index for input (0-based)
 OUTPUT_CHANNELS = [0, 1] # Output channels to map to (channel 1 and 2)
-SAMPLERATE = 96000  # 192 kHz
 
 def audio_callback(indata, outdata, frames, time, status):
     # Map the selected input channel to output channels 1 and 2
     outdata[:, OUTPUT_CHANNELS] = np.tile(indata[:, INPUT_CHANNEL], (len(OUTPUT_CHANNELS), 1)).T
 
 if __name__ == "__main__":
+    samplerate = 96000       # 96 kHz
+
+    devices = sd.query_devices()
     print("Available devices:")
-    print(sd.query_devices())
-    import sys
-    with sd.Stream(device=(INPUT_DEVICE_INDEX, OUTPUT_DEVICE_INDEX),
+    for i, d in enumerate(devices):
+        print(f"{i}: {d['name']} (in: {d['max_input_channels']}, out: {d['max_output_channels']})")
+
+    input_device_index = next((i for i, d in enumerate(devices) if d['name'].lower().startswith('scarlett')), None)
+    output_device_index = next((i for i, d in enumerate(devices) if d['name'].lower().startswith('blackhole')), None)
+
+    if input_device_index is None or output_device_index is None:
+        raise RuntimeError("Could not find Scarlett input or Blackhole output device.")
+
+    print(f"Using input device {input_device_index}: {devices[input_device_index]['name']}")
+    print(f"Using output device {output_device_index}: {devices[output_device_index]['name']}")
+
+    with sd.Stream(device=(input_device_index, output_device_index),
                    channels=(INPUT_CHANNEL+1, max(OUTPUT_CHANNELS)+1),
                    dtype='float32',
-                   samplerate=SAMPLERATE,
+                   samplerate=samplerate,
                    blocksize=0,
                    latency=0.1,
                    callback=audio_callback):
-        print(f"Routing audio at {SAMPLERATE} Hz... Press Ctrl+C to stop.")
+
+        print(f"Routing audio at {samplerate} Hz... Press any key to stop.")
         input()
