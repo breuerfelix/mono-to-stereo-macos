@@ -1,8 +1,8 @@
-
 import sounddevice as sd
 import numpy as np
 import time
 import multiprocessing
+import os
 
 INPUT_CHANNEL = 0        # Channel index for input (0-based)
 OUTPUT_CHANNELS = [0, 1] # Output channels to map to (channel 1 and 2)
@@ -11,7 +11,7 @@ def audio_callback(indata, outdata, frames, time, status):
     if status:
         print(f"Stream status: {status}")
         raise Exception(f"Stream status error {status}")
-    
+
     outdata[:, OUTPUT_CHANNELS] = np.tile(indata[:, INPUT_CHANNEL], (len(OUTPUT_CHANNELS), 1)).T
 
 def main():
@@ -36,8 +36,7 @@ def main():
                     channels=(INPUT_CHANNEL+1, max(OUTPUT_CHANNELS)+1),
                     dtype='float32',
                     samplerate=samplerate,
-                    blocksize=0,
-                    latency=0.1,
+                    latency="low",
                     callback=audio_callback) as s:
 
         print(f"Routing audio at {samplerate} Hz... Press Ctrl+C to stop.")
@@ -49,13 +48,14 @@ def main():
 
     print("Stream closed.")
 
+
 def run_main_on_core():
     while True:
         p = multiprocessing.Process(target=main)
         p.start()
         p.join()
-        print("Main function stopped. Waiting 10 seconds before restarting...")
-        time.sleep(10)
+        print("Main function stopped. Waiting 5 seconds before restarting...")
+        time.sleep(5)
 
 if __name__ == "__main__":
     run_main_on_core()
